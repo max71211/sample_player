@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" v-cloak>
     <div class="tool_block">
       <div class="tool_btn_wrapper">
         <span class="tool_btn">
@@ -30,26 +30,46 @@
       <input type="text" placeholder="Search for artists or tracks" v-model="searchString" @change="findSample">
     </div>
 
-    <div class="samples_block"></div>
+    <div class="samples_block">
+        <div class="sample_item" v-bind:key="key" v-for="(sample, key) in samples">
+        {{sample.author}}
+      </div>
+    </div>
 
   </div>
 </template>
 
 <script>
+import { Howl } from 'howler'
+
 export default {
   name: 'app',
   data () {
     return {
       searchString: '',
+      player: null,
       play: false,
       volume:  60,
       volumeActive: false,
       timeLine: 0,
       timeLineActive: false,
-      mute: false
+      mute: false,
+      samples: [
+        {author: 'Mark', tack: 'Some song', src: ''},
+        {author: 'Mark2', tack: 'Some song2', src: ''},
+        {author: 'Mark3', tack: 'Some song3', src: ''},
+        {author: 'Mark4', tack: 'Some song4', src: ''},
+        {author: 'Mark', tack: 'Some song', src: ''},
+        {author: 'Mark2', tack: 'Some song2', src: ''},
+        {author: 'Mark3', tack: 'Some song3', src: ''},
+        {author: 'Mark4', tack: 'Some song4', src: ''},
+      ]
     }
   },
   computed: {
+    convertedVolume () {
+      return this.volume >= 100 ? 1 : (this.volume * 0.01).toFixed(2)  
+    },
     volumeStyle () {
       return {
         width: this.volume+'%'
@@ -65,8 +85,11 @@ export default {
     playTrack () {
       this.play=!this.play
       if (this.play) {
-
+        this.player.play()
+      } else {
+        this.player.pause()
       }
+       
     },
     getPr (n, m) {
       return parseInt(100*n/m)
@@ -106,6 +129,21 @@ export default {
       this.volumeActive = false
       this.timeLineActive = false
     }
+  },
+  watch: {
+    volume () {
+      this.player.volume = this.convertedVolume
+    }
+  },
+  beforeMount () {
+    this.player = new Howl({
+      src: ['/public/music/sample1.mp3', 
+            '/public/music/sample2.mp3', 
+            '/public/music/sample3.mp3'],
+      autoplay: false,
+      loop: true,
+      volume: this.convertedVolume,
+    })
   }
 }
 </script>
@@ -128,6 +166,8 @@ body{
 }
 
 #app {
+  width: 40%;
+  margin: 0 auto;
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
@@ -243,12 +283,47 @@ body{
   .samples_block {
     margin-top: 30px;
     width: 100%;
-    flex: 1 0 auto;
+    /* flex: 1 0 auto; */
+    height: 400px;
+    overflow: auto;
     border: 1px solid #b8b6b7;
     border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
   }
 
+  .sample_item {
+    width: 98%;
+    height: 22px;
+    margin: 4px 0 0 0;
+    border: 1px solid #b8b6b7;
+    background: #eee9eb;
+    cursor: pointer;
+    transition: all .4s linear;
+    text-indent: 5px;
+  }
+
+  .sample_item:last-of-type {
+    margin-bottom: 4px;
+  }
+
+  .sample_item:hover {
+    opacity: .8;
+  }
+
+ @media screen and (max-width: 960px) {
+   #app {
+    width: 70%;
+  }
+ } 
+
 @media screen and (max-width: 414px) {
+  #app {
+    width: 90%;
+  }
+
   .tool_block {
     flex-direction: column;
     flex-wrap: nowrap;
