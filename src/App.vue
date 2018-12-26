@@ -231,14 +231,6 @@ export default {
       this.$nextTick(() => {
         this.player.volume(this.convertedVolume);
       });
-    },
-    player() {
-      if (this.player != null && this.player.onend) {
-        console.log("End Play Next", this.playingSampl);
-        this.playTrack(this.playingSampl + 1);
-      }
-
-      console.log("Seek", this.player.seek());
     }
   },
   beforeMount() {
