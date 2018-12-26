@@ -57,8 +57,11 @@
       >
         Author: {{ sample.author }}
         Track: {{ sample.tack}}
-        <ion-icon name="play" v-if="key==playingSampl && play"></ion-icon>
-        <ion-icon name="pause" v-else-if="key==playingSampl && !play"></ion-icon>
+        <div class="status_block">
+          <span v-if="key==playingSampl" class="timer_block">{{trackTimer}} / {{playerDuration}}</span>
+          <ion-icon name="play" v-if="key==playingSampl && play"></ion-icon>
+          <ion-icon name="pause" v-else-if="key==playingSampl && !play"></ion-icon>
+        </div>
       </div>
     </div>
   </div>
@@ -73,6 +76,10 @@ export default {
     return {
       searchString: "",
       player: null,
+      playerId: null,
+      playerTimer: 0,
+      timer: null,
+      playerDuration: 0,
       play: false,
       volume: 60,
       volumeActive: false,
@@ -80,7 +87,6 @@ export default {
       timeLineActive: false,
       mute: false,
       playingSampl: null,
-      previousSample: null,
       samples: [
         {
           author: "Mark",
@@ -122,6 +128,12 @@ export default {
       return {
         width: this.timeLine + "%"
       };
+    },
+    trackDuration() {
+      return this.player.duration() || 0;
+    },
+    trackTimer() {
+      return this.formatTime(this.playerTimer) || 0;
     }
   },
   methods: {
@@ -137,24 +149,43 @@ export default {
           this.samples.length > 0 && this.samples.hasOwnProperty("src")
             ? this.samples[key].src
             : "";
-        if (
-          this.previousSample != null &&
-          this.previousSample != this.playingSampl
-        ) {
+
+        if (this.playingSampl != key) {
+          clearInterval(this.timer);
+          this.playerTimer = 0;
+          this.timeLine = 0;
           this.player.stop();
+          this.playerId = null;
         }
 
         this.player.src = [trackSrc];
-        this.player.play();
-        this.previousSample = this.playingSampl;
+        let time = Math.round(this.player.duration());
+        this.playerDuration = this.formatTime(time);
+        this.playerId = this.player.play();
+        this.startPlayerTimer();
         this.playingSampl = key;
       } else {
+        clearInterval(this.timer);
         this.player.pause();
       }
     },
     getPr(n, m) {
       let pr = parseInt((100 * n) / m);
       return pr > 100 ? 100 : pr < 0 ? 0 : pr;
+    },
+    formatTime(secs) {
+      let minutes = Math.floor(secs / 60) || 0;
+      let seconds = secs - minutes * 60 || 0;
+      return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+    },
+    startPlayerTimer() {
+      let duration = Math.round(this.player.duration()) || 0;
+      this.timer = setInterval(() => {
+        if (this.playerTimer < duration) {
+          this.timeLine = this.getPr(this.playerTimer, duration);
+          this.playerTimer++;
+        }
+      }, 1000);
     },
     findSample() {},
     setVolume(e) {
@@ -172,10 +203,12 @@ export default {
       }
     },
     setTimeLine(e) {
-      this.timeLineActive = true;
-      let n = e.offsetX;
-      let m = this.$refs.timeLineWrapper.clientWidth;
-      this.timeLine = this.getPr(n, m);
+      if (this.play) {
+        this.timeLineActive = true;
+        let n = e.offsetX;
+        let m = this.$refs.timeLineWrapper.clientWidth;
+        this.timeLine = this.getPr(n, m);
+      }
     },
     dragTimeLine(e) {
       if (this.timeLineActive) {
@@ -195,6 +228,14 @@ export default {
       this.$nextTick(() => {
         this.player.volume(this.convertedVolume);
       });
+    },
+    player() {
+      if (this.player != null && this.player.end) {
+        console.log("End Play Next", this.playingSampl);
+        this.playTrack(this.playingSampl + 1);
+      }
+
+      console.log("Seek", this.player.seek());
     }
   },
   beforeMount() {
@@ -381,6 +422,28 @@ body {
 
 .sample_item:hover {
   opacity: 0.8;
+}
+
+.status_block {
+  width: 120px;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.timer_block {
+  min-width: 70px;
+  padding: 0 3px 0 0;
+  height: 15px;
+  font-size: 10px;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+  background: #fdfdfd;
+  border-radius: 5px;
+  margin-right: 5px;
 }
 
 @media screen and (max-width: 960px) {
