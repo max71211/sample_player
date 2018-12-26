@@ -184,6 +184,9 @@ export default {
         if (this.playerTimer < duration) {
           this.timeLine = this.getPr(this.playerTimer, duration);
           this.playerTimer++;
+        } else {
+          clearInterval(this.timer);
+          this.playTrack(this.playingSampl + 1);
         }
       }, 1000);
     },
@@ -203,7 +206,7 @@ export default {
       }
     },
     setTimeLine(e) {
-      if (this.play) {
+      if (this.playerTimer > 0) {
         this.timeLineActive = true;
         let n = e.offsetX;
         let m = this.$refs.timeLineWrapper.clientWidth;
@@ -230,7 +233,7 @@ export default {
       });
     },
     player() {
-      if (this.player != null && this.player.end) {
+      if (this.player != null && this.player.onend) {
         console.log("End Play Next", this.playingSampl);
         this.playTrack(this.playingSampl + 1);
       }
