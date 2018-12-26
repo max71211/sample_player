@@ -1,257 +1,399 @@
 <template>
-  <div id="app">
-    <audio preload="auto" ref="player" src=""></audio>
+  <div id="app" v-cloak>
     <div class="tool_block">
       <div class="tool_btn_wrapper">
-        <span class="tool_btn">
-        <ion-icon name="skip-backward"></ion-icon>
-      </span>
-        <span class="tool_btn" @click="playTrack()">
-        <ion-icon name="play" v-if="!play"></ion-icon>
-        <ion-icon name="pause" v-else></ion-icon>
-      </span>
-        <span class="tool_btn">
-        <ion-icon name="skip-forward"></ion-icon>
-      </span>
+        <span class="tool_btn" @click="playTrack(playingSampl-1)">
+          <ion-icon name="skip-backward"></ion-icon>
+        </span>
+        <span class="tool_btn" @click="playTrack(playingSampl)">
+          <ion-icon name="play" v-if="!play"></ion-icon>
+          <ion-icon name="pause" v-else></ion-icon>
+        </span>
+        <span class="tool_btn" @click="playTrack(playingSampl+1)">
+          <ion-icon name="skip-forward"></ion-icon>
+        </span>
       </div>
 
-      <div class="time_line_wrapper" ref="timeLineWrapper" @mousedown.stop="setTimeLine($event)" @mouseleave="mouseUP" @mouseup="mouseUP" @mousemove="dragTimeLine($event)">
+      <div
+        class="time_line_wrapper"
+        ref="timeLineWrapper"
+        @mousedown.stop="setTimeLine($event)"
+        @mouseleave="mouseUP"
+        @mouseup="mouseUP"
+        @mousemove="dragTimeLine($event)"
+      >
         <div class="time_line" :style="timeLineStyle"></div>
       </div>
 
       <div class="volume_wrapper">
         <ion-icon name="volume-mute"></ion-icon>
-        <div class="voice_power_wrapper" ref="volumeWrapper" @mousedown.stop="setVolume($event)" @mouseleave="mouseUP" @mouseup="mouseUP" @mousemove="dragVolume($event)">
+        <div
+          class="voice_power_wrapper"
+          ref="volumeWrapper"
+          @mousedown.stop="setVolume($event)"
+          @mouseleave="mouseUP"
+          @mouseup="mouseUP"
+          @mousemove="dragVolume($event)"
+        >
           <div class="voice_power_line" :style="volumeStyle"></div>
         </div>
       </div>
-
     </div>
     <div class="search_block">
-      <input type="text" placeholder="Search for artists or tracks" v-model="searchString" @change="findSample">
+      <input
+        type="text"
+        placeholder="Search for artists or tracks"
+        v-model="searchString"
+        @change="findSample"
+      >
     </div>
 
-    <div class="samples_block"></div>
-
+    <div class="samples_block">
+      <div
+        class="sample_item"
+        v-bind:key="key"
+        v-for="(sample, key) in samples"
+        @click="playTrack(key)"
+      >
+        Author: {{ sample.author }}
+        Track: {{ sample.tack}}
+        <ion-icon name="play" v-if="key==playingSampl && play"></ion-icon>
+        <ion-icon name="pause" v-else-if="key==playingSampl && !play"></ion-icon>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import { Howl } from "howler";
+
 export default {
-  name: 'app',
-  data () {
+  name: "app",
+  data() {
     return {
-      searchString: '',
+      searchString: "",
+      player: null,
       play: false,
-      volume:  60,
+      volume: 60,
       volumeActive: false,
       timeLine: 0,
       timeLineActive: false,
-      mute: false
-    }
+      mute: false,
+      playingSampl: null,
+      previousSample: null,
+      samples: [
+        {
+          author: "Mark",
+          tack: "Some song",
+          src:
+            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
+        },
+        {
+          author: "Mark2",
+          tack: "Some song2",
+          src:
+            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
+        },
+        {
+          author: "Mark3",
+          tack: "Some song3",
+          src:
+            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
+        },
+        {
+          author: "Mark4",
+          tack: "Some song4",
+          src:
+            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
+        }
+      ]
+    };
   },
   computed: {
-    volumeStyle () {
-      return {
-        width: this.volume+'%'
-      }
+    convertedVolume() {
+      return parseFloat((this.volume * 0.01).toFixed(2));
     },
-    timeLineStyle () {
+    volumeStyle() {
       return {
-        width: this.timeLine+'%'
-      }
+        width: this.volume + "%"
+      };
+    },
+    timeLineStyle() {
+      return {
+        width: this.timeLine + "%"
+      };
     }
   },
   methods: {
-    playTrack () {
-      this.play=!this.play
+    playTrack(key) {
+      key = key == null ? 0 : key;
+      if (this.samples[key] == undefined) {
+        key = key < 0 ? this.samples.length - 1 : key;
+        key = key > this.samples.length - 1 ? 0 : key;
+      }
+      this.play = this.playingSampl == key ? !this.play : true;
       if (this.play) {
-        let audio = this.$refs.player
-        audio.src = '/public/music/sample1.mp3'
-        audio.play
-      }
-    },
-    getPr (n, m) {
-      return parseInt(100*n/m)
-    },
-    findSample () {
+        let trackSrc =
+          this.samples.length > 0 && this.samples.hasOwnProperty("src")
+            ? this.samples[key].src
+            : "";
+        if (
+          this.previousSample != null &&
+          this.previousSample != this.playingSampl
+        ) {
+          this.player.stop();
+        }
 
+        this.player.src = [trackSrc];
+        this.player.play();
+        this.previousSample = this.playingSampl;
+        this.playingSampl = key;
+      } else {
+        this.player.pause();
+      }
     },
-		setVolume (e) {
-      this.volumeActive = true
-      let n = e.offsetX
-      let m = this.$refs.volumeWrapper.clientWidth
-      this.volume= this.getPr(n,m)
+    getPr(n, m) {
+      let pr = parseInt((100 * n) / m);
+      return pr > 100 ? 100 : pr < 0 ? 0 : pr;
     },
-    dragVolume (e) {
+    findSample() {},
+    setVolume(e) {
+      this.volumeActive = true;
+      let n = e.offsetX;
+      let m = this.$refs.volumeWrapper.clientWidth;
+      this.volume = this.getPr(n, m);
+    },
+    dragVolume(e) {
       if (this.volumeActive) {
-        let n = e.offsetX
-        let m = this.$refs.volumeWrapper.clientWidth
-        this.volumeActive = true
-        this.volume= this.getPr(n,m)
+        let n = e.offsetX;
+        let m = this.$refs.volumeWrapper.clientWidth;
+        this.volumeActive = true;
+        this.volume = this.getPr(n, m);
       }
     },
-    setTimeLine (e) {
-      this.timeLineActive = true
-      let n = e.offsetX
-      let m = this.$refs.timeLineWrapper.clientWidth
-      this.timeLine = this.getPr(n,m)
+    setTimeLine(e) {
+      this.timeLineActive = true;
+      let n = e.offsetX;
+      let m = this.$refs.timeLineWrapper.clientWidth;
+      this.timeLine = this.getPr(n, m);
     },
-    dragTimeLine (e) {
+    dragTimeLine(e) {
       if (this.timeLineActive) {
-        let n = e.offsetX
-        let m = this.$refs.timeLineWrapper.clientWidth
-        this.volumeActive = true
-        this.timeLine = this.getPr(n,m)
+        let n = e.offsetX;
+        let m = this.$refs.timeLineWrapper.clientWidth;
+        this.volumeActive = true;
+        this.timeLine = this.getPr(n, m);
       }
     },
-    mouseUP () {
-      this.volumeActive = false
-      this.timeLineActive = false
+    mouseUP() {
+      this.volumeActive = false;
+      this.timeLineActive = false;
     }
+  },
+  watch: {
+    volume() {
+      this.$nextTick(() => {
+        this.player.volume(this.convertedVolume);
+      });
+    }
+  },
+  beforeMount() {
+    let tracks = this.samples.reduce((arr, item) => {
+      return [...arr, item.src];
+    }, []);
+    this.player = new Howl({
+      src: tracks,
+      loop: true,
+      volume: this.convertedVolume
+    });
+  },
+  beforeDestroy() {
+    this.player.pause();
+    this.player = null;
   }
-}
+};
 </script>
 
 <style>
-
 * {
   padding: 0;
   margin: 0;
 }
 
-html{
+html {
   height: 100%;
 }
 
-body{
+body {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
 #app {
+  width: 40%;
+  margin: 0 auto;
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   padding: 40px 20px;
-  font-family: 'Indie Flower', cursive;
+  font-family: "ZCOOL XiaoWei", serif;
 }
 
-  .tool_block {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    height: 30px;
-  }
+.tool_block {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  height: 30px;
+}
 
-  .tool_btn_wrapper {
-    padding: 0 10px;
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: center;
-    align-items: center;
-    max-height: 10px;
-  }
+.tool_btn_wrapper {
+  padding: 0 10px;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+  max-height: 10px;
+}
 
-  .tool_btn {
-    margin: 0 10px;
-    cursor: pointer;
-    color: gray;
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: space-around;
-    align-items: center;
-    transition: all .4s linear;
-  }
+.tool_btn {
+  margin: 0 10px;
+  cursor: pointer;
+  color: gray;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-around;
+  align-items: center;
+  transition: all 0.4s linear;
+}
 
-  .tool_btn:hover {
-    opacity: .8;
-  }
+.tool_btn:hover {
+  opacity: 0.8;
+}
 
-  .time_line_wrapper {
-    margin-left: 10px;
-    flex: 9 0 auto;
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    height: 8px;
-    max-height: 8px;
-    padding: 1px;
-    cursor: pointer;
-    border: 1px solid #b8b6b7;
+.time_line_wrapper {
+  margin-left: 10px;
+  flex: 9 0 auto;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  height: 8px;
+  max-height: 8px;
+  padding: 1px;
+  cursor: pointer;
+  border: 1px solid #b8b6b7;
+}
 
-  }
+.time_line {
+  height: 8px;
+  background: gray;
+}
 
-  .time_line {
-    height: 8px;
-    background: gray;
-  }
+.volume_wrapper {
+  margin-left: 10px;
+  flex: 2 1 auto;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
 
-  .volume_wrapper {
-    margin-left: 10px;
-    flex: 2 1 auto;
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: flex-start;
-    align-items: center;
-  }
+.voice_power_wrapper {
+  flex: 10 0 auto;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  height: 8px;
+  padding: 1px;
+  cursor: pointer;
+  border: 1px solid #b8b6b7;
+}
 
-  .voice_power_wrapper {
-    flex: 10 0 auto;
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    height: 8px;
-    padding: 1px;
-    cursor: pointer;
-    border: 1px solid #b8b6b7;
-  }
+.voice_power_line {
+  height: 8px;
+  background: gray;
+  cursor: pointer;
+}
 
-  .voice_power_line {
-    height: 8px;
-    background: gray;
-    cursor: pointer;
-  }
+.search_block {
+  margin-top: 20px;
+  width: 100%;
+  height: 30px;
+}
 
-  .search_block {
-    margin-top: 20px;
-    width: 100%;
-    height: 30px;
-  }
+.search_block input[type="text"] {
+  width: 100%;
+  height: 25px;
+  background-color: #ffffff;
+  text-indent: 10px;
+  align-self: center;
+  border: 1px solid #b8b6b7;
+  border-radius: 5px;
+  outline: none;
+  outline-offset: 0;
+  font-size: 1.1em;
+  margin-bottom: 10px;
+  margin-top: 10px;
+  font-family: "ZCOOL XiaoWei", serif;
+}
 
-  .search_block input[type=text] {
-    width: 100%;
-    height: 25px;
-    background-color: #ffffff;
-    text-indent: 10px;
-    align-self: center;
-    border: 1px solid #b8b6b7;
-    border-radius: 5px;
-    outline: none;
-    outline-offset: 0;
-    font-size: 1.1em;
-    margin-bottom: 10px;
-    margin-top: 10px;
-    font-family: 'Indie Flower', cursive;
-  }
+.samples_block {
+  margin-top: 30px;
+  width: 100%;
+  /* flex: 1 0 auto; */
+  height: 400px;
+  overflow: auto;
+  border: 1px solid #b8b6b7;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
 
-  .samples_block {
-    margin-top: 30px;
-    width: 100%;
-    flex: 1 0 auto;
-    border: 1px solid #b8b6b7;
-    border-radius: 5px;
+.sample_item {
+  width: 98%;
+  height: 22px;
+  margin: 4px 0 0 0;
+  border: 1px solid #b8b6b7;
+  background: #eee9eb;
+  cursor: pointer;
+  transition: all 0.4s linear;
+  text-indent: 5px;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between;
+  align-items: center;
+  line-height: 22px;
+  font-size: 12px;
+}
+
+.sample_item:last-of-type {
+  margin-bottom: 4px;
+}
+
+.sample_item:hover {
+  opacity: 0.8;
+}
+
+@media screen and (max-width: 960px) {
+  #app {
+    width: 70%;
   }
+}
 
 @media screen and (max-width: 414px) {
+  #app {
+    width: 90%;
+  }
+
   .tool_block {
     flex-direction: column;
     flex-wrap: nowrap;
