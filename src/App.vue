@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <audio preload="auto" ref="player" src=""></audio>
     <div class="tool_block">
       <div class="tool_btn_wrapper">
         <span class="tool_btn">
@@ -65,7 +66,9 @@ export default {
     playTrack () {
       this.play=!this.play
       if (this.play) {
-
+        let audio = this.$refs.player
+        audio.src = '/public/music/sample1.mp3'
+        audio.play
       }
     },
     getPr (n, m) {
