@@ -157,6 +157,9 @@ export default {
               this.samplePlaying = false;
               clearInterval(this.timer);
             },
+            onend: () => {
+              this.playTrack(this.playingSampl + 1);
+            },
             onstop: () => {
               this.samplePlaying = false;
             }
@@ -195,9 +198,6 @@ export default {
         if (this.playerTimer < duration) {
           this.timeLine = this.getPr(this.playerTimer, duration);
           this.playerTimer++;
-        } else {
-          clearInterval(this.timer);
-          this.playTrack(this.playingSampl + 1);
         }
       }, 1000);
     },
