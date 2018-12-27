@@ -139,7 +139,7 @@ export default {
 
           this.player = new Howl({
             src: [trackSrc],
-            format: ["dolby", "ogg", "webm", "mp3"],
+            format: ["mp3"],
             xhrWithCredentials: true,
             volume: this.convertedVolume,
             onload: () => {
