@@ -120,8 +120,8 @@ export default {
     playTrack(key) {
       key = key == null ? 0 : key;
       if (this.traksArray[key] == undefined) {
-        key = key < 0 ? this.samples.length - 1 : key;
-        key = key > this.samples.length - 1 ? 0 : key;
+        key = key < 0 ? this.traksArray.length - 1 : key;
+        key = key > this.traksArray.length - 1 ? 0 : key;
       }
       this.play = this.playingSampl == key ? !this.play : true;
       if (this.play) {
