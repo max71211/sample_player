@@ -16,7 +16,7 @@ const store = new Vuex.Store({
         author: "Grace Davies",
         tack: "Hello - Adele",
         src:
-          "https://dl.dropboxusercontent.com/s/llehpkjhlj9161a/creationcookie%20-%20Adele%20-%20SKYFALL%20Official%20Lyrics%20Video.mp3?dl=0"
+          "https://dl.dropboxusercontent.com/s/3zqlbmejveszlks/Grace%20Davies%20-%20Hello%20-%20Adele.mp3?dl=0"
       },
       {
         author: "Adele",
@@ -37,10 +37,16 @@ const store = new Vuex.Store({
           "https://dl.dropboxusercontent.com/s/quryhrfq93r0ngm/eageanbluefish%20-%20This%20is%20the%20man%27s%20world-live.mp3?dl=0"
       },
       {
-        author: "L'actualité d'Indila",
+        author: "Indila",
         tack: "Love Story",
         src:
           "https://dl.dropboxusercontent.com/s/a7o2r8ks0sg5dc7/L%27actualit%C3%A9%20d%27Indila%20-%20Indila%20-%20Love%20Story%20%28L%27%C3%89quipe%20de%20nuit%20_%20Radio%20Scoop%29.mp3?dl=0"
+      },
+      {
+        author: "Indila",
+        tack: "Dernière Danse",
+        src:
+          "https://dl.dropboxusercontent.com/s/qs6y0yc7api2lpr/NS710%20-%20Indila%20-%20Derni%C3%A8re%20Danse%20%28IV%29.mp3?dl=0"
       }
     ]
   },

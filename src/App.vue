@@ -43,19 +43,18 @@
       <input type="text" placeholder="Search for artists or tracks" v-model="searchString">
     </div>
 
-    <div class="samples_block" v-if="tracksLoaded">
+    <div class="samples_block">
       <div
         class="sample_item"
         v-bind:key="key"
         v-for="(sample, key) in traksArray"
         @click="playTrack(key)"
       >
-        Author: {{ sample.author }}
-        Track: {{ sample.tack}}
+        <div class="sample_item_title">Author: {{ sample.author }} Track: {{ sample.tack}}</div>
         <div class="status_block">
           <span v-if="key==playingSampl" class="timer_block">{{trackTimer}} / {{playerDuration}}</span>
-          <ion-icon name="play" v-if="key==playingSampl && play"></ion-icon>
-          <ion-icon name="pause" v-else-if="key==playingSampl && !play"></ion-icon>
+          <ion-icon name="play" v-if="key==playingSampl && samplePlaying"></ion-icon>
+          <ion-icon name="pause" v-else-if="key==playingSampl && !samplePlaying"></ion-icon>
         </div>
       </div>
     </div>
@@ -77,6 +76,7 @@ export default {
       timer: null,
       playerDuration: 0,
       play: false,
+      samplePlaying: false,
       volume: 60,
       volumeActive: false,
       timeLine: 0,
@@ -126,27 +126,49 @@ export default {
       this.play = this.playingSampl == key ? !this.play : true;
       if (this.play) {
         let trackSrc =
-          this.traksArray.length > 0 && this.traksArray.hasOwnProperty("src")
-            ? this.traksArray[key].src
-            : "";
+          this.traksArray.length > 0 ? this.traksArray[key].src : "";
 
         if (this.playingSampl != key) {
-          clearInterval(this.timer);
-          this.playerTimer = 0;
-          this.timeLine = 0;
-          this.player.stop();
-          this.playerId = null;
-        }
+          if (this.player != null) {
+            clearInterval(this.timer);
+            this.playerTimer = 0;
+            this.timeLine = 0;
+            this.player.stop();
+            this.playerId = null;
+          }
 
-        this.player.src = [trackSrc];
-        let time = Math.round(this.player.duration());
-        this.playerDuration = this.formatTime(time);
-        this.playerId = this.player.play();
-        this.startPlayerTimer();
-        this.playingSampl = key;
+          this.player = new Howl({
+            src: [trackSrc],
+            format: ["dolby", "ogg", "webm", "mp3"],
+            xhrWithCredentials: true,
+            volume: this.convertedVolume,
+            onload: () => {
+              this.tracksLoaded = true;
+              this.playerId = this.player.play();
+            },
+            onplay: () => {
+              this.samplePlaying = true;
+              let time = Math.round(this.player.duration());
+              this.playerDuration = this.formatTime(time);
+              this.startPlayerTimer();
+              this.playingSampl = key;
+            },
+            onpause: () => {
+              this.samplePlaying = false;
+              clearInterval(this.timer);
+            },
+            onstop: () => {
+              this.samplePlaying = false;
+            }
+          });
+        } else {
+          this.player.play();
+        }
       } else {
         clearInterval(this.timer);
-        this.player.pause();
+        if (this.player !== null) {
+          this.player.pause();
+        }
       }
     },
     seekTrack(position) {
@@ -221,7 +243,9 @@ export default {
   watch: {
     volume() {
       this.$nextTick(() => {
-        this.player.volume(this.convertedVolume);
+        if (this.player !== null) {
+          this.player.volume(this.convertedVolume);
+        }
       });
     },
     searchString() {
@@ -235,23 +259,11 @@ export default {
       }
     }
   },
-  beforeMount() {
-    let tracks = this.traksArray.reduce((arr, item) => {
-      return [...arr, item.src];
-    }, []);
-    this.player = new Howl({
-      src: tracks,
-      loop: true,
-      preload: true,
-      volume: this.convertedVolume,
-      onload: () => {
-        this.tracksLoaded = true;
-      }
-    });
-  },
   beforeDestroy() {
-    this.player.pause();
-    this.player = null;
+    if (this.player !== null) {
+      this.player.stop();
+      this.player = null;
+    }
   }
 };
 </script>
@@ -324,7 +336,7 @@ body {
 
 .time_line_wrapper {
   margin-left: 10px;
-  flex: 9 0 auto;
+  flex: 8 0 auto;
   display: flex;
   flex-flow: row nowrap;
   justify-content: flex-start;
@@ -343,7 +355,7 @@ body {
 
 .volume_wrapper {
   margin-left: 10px;
-  flex: 2 1 auto;
+  flex: 2 0 auto;
   display: flex;
   flex-flow: row nowrap;
   justify-content: flex-start;
@@ -419,6 +431,14 @@ body {
   align-items: center;
   line-height: 22px;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sample_item_title {
+  max-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sample_item:last-of-type {
