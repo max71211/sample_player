@@ -18,9 +18,9 @@
         class="time_line_wrapper"
         ref="timeLineWrapper"
         @mousedown.stop="setTimeLine($event)"
+        @mousemove="dragTimeLine($event)"
         @mouseleave="mouseUP"
         @mouseup="mouseUP"
-        @mousemove="dragTimeLine($event)"
       >
         <div class="time_line" :style="timeLineStyle"></div>
       </div>
@@ -31,28 +31,23 @@
           class="voice_power_wrapper"
           ref="volumeWrapper"
           @mousedown.stop="setVolume($event)"
+          @mousemove="dragVolume($event)"
           @mouseleave="mouseUP"
           @mouseup="mouseUP"
-          @mousemove="dragVolume($event)"
         >
           <div class="voice_power_line" :style="volumeStyle"></div>
         </div>
       </div>
     </div>
     <div class="search_block">
-      <input
-        type="text"
-        placeholder="Search for artists or tracks"
-        v-model="searchString"
-        @change="findSample"
-      >
+      <input type="text" placeholder="Search for artists or tracks" v-model="searchString">
     </div>
 
-    <div class="samples_block">
+    <div class="samples_block" v-if="tracksLoaded">
       <div
         class="sample_item"
         v-bind:key="key"
-        v-for="(sample, key) in samples"
+        v-for="(sample, key) in traksArray"
         @click="playTrack(key)"
       >
         Author: {{ sample.author }}
@@ -69,6 +64,7 @@
 
 <script>
 import { Howl } from "howler";
+import { mapActions, mapGetters } from "vuex";
 
 export default {
   name: "app",
@@ -87,35 +83,18 @@ export default {
       timeLineActive: false,
       mute: false,
       playingSampl: null,
-      samples: [
-        {
-          author: "Mark",
-          tack: "Some song",
-          src:
-            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
-        },
-        {
-          author: "Mark2",
-          tack: "Some song2",
-          src:
-            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
-        },
-        {
-          author: "Mark3",
-          tack: "Some song3",
-          src:
-            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
-        },
-        {
-          author: "Mark4",
-          tack: "Some song4",
-          src:
-            "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/22/Volcano_Lava_Sample.webm/Volcano_Lava_Sample.webm.360p.webm"
-        }
-      ]
+      tracksLoaded: false
     };
   },
   computed: {
+    ...mapGetters(["getTraks", "getTraksBySearchString"]),
+    traksArray() {
+      if (this.searchString.length < 1) {
+        return this.getTraks;
+      } else {
+        return this.getTraksBySearchString(this.searchString);
+      }
+    },
     convertedVolume() {
       return parseFloat((this.volume * 0.01).toFixed(2));
     },
@@ -130,24 +109,25 @@ export default {
       };
     },
     trackDuration() {
-      return this.player.duration() || 0;
+      return Math.round(this.player.duration()) || 0;
     },
     trackTimer() {
       return this.formatTime(this.playerTimer) || 0;
     }
   },
   methods: {
+    ...mapActions(["loadSamples"]),
     playTrack(key) {
       key = key == null ? 0 : key;
-      if (this.samples[key] == undefined) {
+      if (this.traksArray[key] == undefined) {
         key = key < 0 ? this.samples.length - 1 : key;
         key = key > this.samples.length - 1 ? 0 : key;
       }
       this.play = this.playingSampl == key ? !this.play : true;
       if (this.play) {
         let trackSrc =
-          this.samples.length > 0 && this.samples.hasOwnProperty("src")
-            ? this.samples[key].src
+          this.traksArray.length > 0 && this.traksArray.hasOwnProperty("src")
+            ? this.traksArray[key].src
             : "";
 
         if (this.playingSampl != key) {
@@ -169,6 +149,15 @@ export default {
         this.player.pause();
       }
     },
+    seekTrack(position) {
+      position = position < 0 ? 0 : position;
+      position = position > this.trackDuration ? this.trackDuration : position;
+      position = Math.round(position);
+      clearInterval(this.timer);
+      this.playerTimer = position;
+      this.player.seek(position);
+      this.startPlayerTimer();
+    },
     getPr(n, m) {
       let pr = parseInt((100 * n) / m);
       return pr > 100 ? 100 : pr < 0 ? 0 : pr;
@@ -179,7 +168,7 @@ export default {
       return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
     },
     startPlayerTimer() {
-      let duration = Math.round(this.player.duration()) || 0;
+      let duration = this.trackDuration;
       this.timer = setInterval(() => {
         if (this.playerTimer < duration) {
           this.timeLine = this.getPr(this.playerTimer, duration);
@@ -190,7 +179,6 @@ export default {
         }
       }, 1000);
     },
-    findSample() {},
     setVolume(e) {
       this.volumeActive = true;
       let n = e.offsetX;
@@ -211,6 +199,8 @@ export default {
         let n = e.offsetX;
         let m = this.$refs.timeLineWrapper.clientWidth;
         this.timeLine = this.getPr(n, m);
+        let position = (this.trackDuration / 100) * this.timeLine;
+        this.seekTrack(position);
       }
     },
     dragTimeLine(e) {
@@ -219,6 +209,8 @@ export default {
         let m = this.$refs.timeLineWrapper.clientWidth;
         this.volumeActive = true;
         this.timeLine = this.getPr(n, m);
+        let position = (this.trackDuration / 100) * this.timeLine;
+        this.seekTrack(position);
       }
     },
     mouseUP() {
@@ -231,16 +223,30 @@ export default {
       this.$nextTick(() => {
         this.player.volume(this.convertedVolume);
       });
+    },
+    searchString() {
+      if (this.searchString.length > 0 && this.play) {
+        clearInterval(this.timer);
+        this.playingSampl = null;
+        this.playerTimer = 0;
+        this.timeLine = 0;
+        this.player.stop();
+        this.playerId = null;
+      }
     }
   },
   beforeMount() {
-    let tracks = this.samples.reduce((arr, item) => {
+    let tracks = this.traksArray.reduce((arr, item) => {
       return [...arr, item.src];
     }, []);
     this.player = new Howl({
       src: tracks,
       loop: true,
-      volume: this.convertedVolume
+      preload: true,
+      volume: this.convertedVolume,
+      onload: () => {
+        this.tracksLoaded = true;
+      }
     });
   },
   beforeDestroy() {
@@ -251,6 +257,10 @@ export default {
 </script>
 
 <style>
+[v-cloack] {
+  display: none;
+}
+
 * {
   padding: 0;
   margin: 0;
